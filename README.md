@@ -12,13 +12,15 @@ GLoRIA (**G**lobal-**Lo**cal **R**epresentations for **I**mages using **A**tteni
 
 ## Usage
 
-Make sure to [install PyTorch 1.7.1](https://pytorch.org/get-started/locally/) with the right CUDA version, then clone this repository and install the dependencies.  
+Start by [installing PyTorch 1.7.1](https://pytorch.org/get-started/locally/) with the right CUDA version, then clone this repository and install the dependencies.  
 
 ```bash
 $ conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=10.1 -c pytorch
 $ pip install git@github.com:marshuang80/gloria.git
 $ conda env create -f environment.yml
 ```
+
+Make sure to download the pretrained weights from [here](https://stanfordmedicine.box.com/s/j5h7q99f3pfi7enc0dom73m4nsm6yzvh) and place it in the `./pretrained` folder.
 
 ### Load GLoRIA pretrained classifier 
 ```python
