@@ -4,10 +4,9 @@
 
 GLoRIA (Global-Local Representations for Images using Attenion) is a multimodal representation learning framework for label-efficient medical image recognition. Our results demonstrate high-performance and label-efficiency for image-text retrieval, classification (finetuning and zeros-shot settings), and segmentation on different medical imaging datasets. 
 
-[[GLoRIA Manuscript]](https://openaccess.thecvf.com/content/ICCV2021/html/Huang_GLoRIA_A_Multimodal_Global-Local_Representation_Learning_Framework_for_Label-Efficient_Medical_ICCV_2021_paper.html) \
-Shih-Cheng Huang, Liyue Shen, Matthew P. Lungren, Serena Yeung \
-Stanford University \
-Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), 2021 
+**[GLoRIA Manuscript](https://openaccess.thecvf.com/content/ICCV2021/html/Huang_GLoRIA_A_Multimodal_Global-Local_Representation_Learning_Framework_for_Label-Efficient_Medical_ICCV_2021_paper.html)** \
+Shih-Cheng Huang (Mars), Liyue Shen, Matthew P. Lungren, Serena Yeung <br> Stanford University <br>
+Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), 2021 <br>
 
 ## Approach
 ![GLoRIA](GLoRIA.png)
@@ -21,9 +20,6 @@ $ conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=
 $ pip install git@github.com:marshuang80/gloria.git
 $ conda env create -f environment.yml
 ```
-
-Replace `cudatoolkit=11.0` above with the appropriate CUDA version on your machine or `cpuonly` when installing on a machine without a GPU.
-
 
 ### Load GLoRIA pretrained classifier 
 ```python
@@ -106,6 +102,17 @@ python run.py -c ./configs/pneumonia_classification_config.yaml --train --test -
 
 The **train_pct** flag randomly selects a percentage of the dataset to fine-tune the model. This is use to determine the performance of the model under low data regime.
 
+### Citation
+
+```
+@inproceedings{huang2021gloria,
+  title={GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-Efficient Medical Image Recognition},
+  author={Huang, Shih-Cheng and Shen, Liyue and Lungren, Matthew P and Yeung, Serena},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={3942--3951},
+  year={2021}
+}
+```
 
 #### Acknowledgements
 This codebase is adapted from [ControlGAN](https://github.com/mrlibw/ControlGAN)
