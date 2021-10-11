@@ -28,7 +28,7 @@ import gloria
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 num_class = 5   # 5 class classification
-freeze = True   # freeze encoder and only train linear classifier (works when training data is limited)
+freeze = True   # freeze encoder and only train linear classifier (less likely to overfit when training data is limited)
 model = gloria.load_img_classification_model(num_class=5, freeze_encoder=freeze, device=device)
 ```
 
