@@ -1,5 +1,4 @@
-# GLoRIA: 
-## A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition
+# GLoRIA: A Multimodal Global-Local Representation Learning Framework for Label-efficient Medical Image Recognition
 
 GLoRIA (**G**lobal-**Lo**cal **R**epresentations for **I**mages using **A**ttenion) is a multimodal representation learning framework for label-efficient medical image recognition. Our results demonstrate high-performance and label-efficiency for image-text retrieval, classification (finetuning and zeros-shot settings), and segmentation on different medical imaging datasets. 
 
