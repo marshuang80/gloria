@@ -17,7 +17,7 @@ random.seed(6)
 
 
 _MODELS = {
-    "RN50": "./pretrained/chexpert_resnet50.ckpt"
+    "RN50": "./pretrained/chexpert_resnet50_.ckpt"
 }
 
 _FEATURE_DIM = {
@@ -46,12 +46,19 @@ def load_gloria(name: str = 'RN50', device: Union[str, torch.device] = "cuda" if
         The GLoRIA model
     """
 
+    # warnings 
     if name in _MODELS:
         ckpt_path = _MODELS[name]
     elif os.path.isfile(name):
         ckpt_path = name
     else:
         raise RuntimeError(f"Model {name} not found; available models = {available_models()}")
+
+    if not os.path.exists(ckpt_path):
+        raise RuntimeError(f"Model {name} not found.\n" +\
+            "Make sure to download the pretrained weights from \n" +\
+            "    https://stanfordmedicine.box.com/s/j5h7q99f3pfi7enc0dom73m4nsm6yzvh \n" +\
+            " and copy it to the ./pretrained folder.")
 
     ckpt = torch.load(ckpt_path)
     cfg = ckpt['hyper_parameters'] 
