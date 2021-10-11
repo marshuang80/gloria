@@ -62,7 +62,7 @@ processed_imgs = gloria_model.process_img(df['Path'].tolist(), device)
 similarities = gloria.zero_shot_classification(
     gloria_model, processed_imgs, processed_txt)
 
-print(siilartiies)
+print(similarities)
 #      Atelectasis  Cardiomegaly  Consolidation     Edema  Pleural Effusion
 # 0       1.371477     -0.416303      -1.023546 -1.460464          0.145969
 # 1       1.550474      0.277534       1.743613  0.187523          1.166638
