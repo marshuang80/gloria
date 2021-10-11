@@ -71,7 +71,7 @@ print(siilartiies)
 ## Training
 
 This codebase has been developed with python version 3.7, PyTorch version 1.7.1, CUDA 10.2 and pytorch-lightning 1.1.4. 
-Example configurations for pretraining and downstream classification can be found in the `./configs`. All training and testing are done using the **run.py** script. For more documentation, please run: 
+Example configurations for pretraining and downstream classification can be found in the `./configs`. All training and testing are done using the `run.py` script. For more documentation, please run: 
 
 ```bash 
 python run.py --help
