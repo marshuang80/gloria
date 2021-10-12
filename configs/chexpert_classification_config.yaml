@@ -1,6 +1,5 @@
-experiment_name: 'chexpert_linear_classifier'
+experiment_name: 'chexpert_classifier'
 phase: 'classification'
-trial_name: 'rerun_2'
 
 lightning:
     trainer:
