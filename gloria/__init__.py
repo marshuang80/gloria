@@ -1,3 +1,3 @@
 from . import builder
 
-from .gloria import * 
+from .gloria import *

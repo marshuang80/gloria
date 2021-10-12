@@ -14,19 +14,18 @@ def dice_loss(pred, target):
             ground truth label
     """
 
-    smooth = 1.
+    smooth = 1.0
 
     pred = torch.sigmoid(pred)
 
     p_flat = pred.view(-1)
     t_flat = target.view(-1)
     intersection = (p_flat * t_flat).sum()
-    return ((2. * intersection + smooth) / (p_flat.sum() + t_flat.sum() + smooth))
+    return (2.0 * intersection + smooth) / (p_flat.sum() + t_flat.sum() + smooth)
 
 
 class DiceLoss(nn.Module):
-
-    def __init__(self, smooth=1, p=2, reduction='mean'):
+    def __init__(self, smooth=1, p=2, reduction="mean"):
         super(DiceLoss, self).__init__()
         self.smooth = smooth
         self.p = p
@@ -42,14 +41,14 @@ class DiceLoss(nn.Module):
 
         loss = 1 - num / den
 
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             return loss.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             return loss.sum()
-        elif self.reduction == 'none':
+        elif self.reduction == "none":
             return loss
         else:
-            raise Exception('Unexpected reduction {}'.format(self.reduction))
+            raise Exception("Unexpected reduction {}".format(self.reduction))
 
 
 class FocalLoss(nn.Module):
@@ -59,11 +58,18 @@ class FocalLoss(nn.Module):
 
     def forward(self, input, target):
         if not (target.size() == input.size()):
-            raise ValueError("Target size ({}) must be the same as input size ({})"
-                             .format(target.size(), input.size()))
+            raise ValueError(
+                "Target size ({}) must be the same as input size ({})".format(
+                    target.size(), input.size()
+                )
+            )
         max_val = (-input).clamp(min=0)
-        loss = input - input * target + max_val + \
-            ((-max_val).exp() + (-input - max_val).exp()).log()
+        loss = (
+            input
+            - input * target
+            + max_val
+            + ((-max_val).exp() + (-input - max_val).exp()).log()
+        )
         invprobs = F.logsigmoid(-input * (target * 2.0 - 1.0))
         loss = (invprobs * self.gamma).exp() * loss
         return loss.mean()
@@ -77,5 +83,7 @@ class MixedLoss(nn.Module):
         self.focal = FocalLoss(gamma)
 
     def forward(self, input, target):
-        loss = self.alpha*self.focal(input, target) - torch.log(dice_loss(input, target))
+        loss = self.alpha * self.focal(input, target) - torch.log(
+            dice_loss(input, target)
+        )
         return loss.mean()

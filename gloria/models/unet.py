@@ -10,12 +10,23 @@ class ConvBlock(nn.Module):
     Helper module that consists of a Conv -> BN -> ReLU
     """
 
-    def __init__(self, in_channels, out_channels, padding=1, kernel_size=3, 
-                 stride=1, with_nonlinearity=True):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        padding=1,
+        kernel_size=3,
+        stride=1,
+        with_nonlinearity=True,
+    ):
         super().__init__()
         self.conv = nn.Conv2d(
-            in_channels, out_channels, padding=padding, kernel_size=kernel_size, 
-            stride=stride)
+            in_channels,
+            out_channels,
+            padding=padding,
+            kernel_size=kernel_size,
+            stride=stride,
+        )
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU()
         self.with_nonlinearity = with_nonlinearity
@@ -36,8 +47,8 @@ class Bridge(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.bridge = nn.Sequential(
-            ConvBlock(in_channels, out_channels),
-            ConvBlock(out_channels, out_channels))
+            ConvBlock(in_channels, out_channels), ConvBlock(out_channels, out_channels)
+        )
 
     def forward(self, x):
         return self.bridge(x)
@@ -49,8 +60,14 @@ class UpBlock(nn.Module):
         Upsample->ConvBlock->ConvBlock
     """
 
-    def __init__(self, in_channels, out_channels, up_conv_in_channels=None, 
-                 up_conv_out_channels=None, upsampling_method="conv_transpose"):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        up_conv_in_channels=None,
+        up_conv_out_channels=None,
+        upsampling_method="conv_transpose",
+    ):
         super().__init__()
 
         if up_conv_in_channels == None:
@@ -60,12 +77,12 @@ class UpBlock(nn.Module):
 
         if upsampling_method == "conv_transpose":
             self.upsample = nn.ConvTranspose2d(
-                up_conv_in_channels, up_conv_out_channels, kernel_size=2, 
-                stride=2)
+                up_conv_in_channels, up_conv_out_channels, kernel_size=2, stride=2
+            )
         elif upsampling_method == "bilinear":
             self.upsample = nn.Sequential(
-                nn.Upsample(mode='bilinear', scale_factor=2),
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1)
+                nn.Upsample(mode="bilinear", scale_factor=2),
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1),
             )
         self.conv_block_1 = ConvBlock(in_channels, out_channels)
         self.conv_block_2 = ConvBlock(out_channels, out_channels)
@@ -89,20 +106,18 @@ class ResnetUNet(nn.Module):
     def __init__(self, cfg, n_classes=1):
         super().__init__()
 
-        if 'resnet' not in cfg.model.vision.model_name:
-            raise Exception('Resnet UNet only accepts resnet backbone')
-        model_function = getattr(
-            cnn_backbones, cfg.model.vision.model_name)
-        resnet, _, _ = model_function(
-            pretrained=cfg.model.vision.pretrained)
+        if "resnet" not in cfg.model.vision.model_name:
+            raise Exception("Resnet UNet only accepts resnet backbone")
+        model_function = getattr(cnn_backbones, cfg.model.vision.model_name)
+        resnet, _, _ = model_function(pretrained=cfg.model.vision.pretrained)
 
         # load pretrained weights
         if cfg.model.ckpt_path is not None:
             ckpt = torch.load(cfg.model.ckpt_path)
             ckpt_dict = {}
-            for k, v in ckpt['state_dict'].items():
-                if k.startswith('gloria.img_encoder.model'):
-                    k = '.'.join(k.split('.')[3:])
+            for k, v in ckpt["state_dict"].items():
+                if k.startswith("gloria.img_encoder.model"):
+                    k = ".".join(k.split(".")[3:])
                     ckpt_dict[k] = v
             resnet.load_state_dict(ckpt_dict)
 
@@ -118,10 +133,22 @@ class ResnetUNet(nn.Module):
         up_blocks.append(UpBlock(2048, 1024))
         up_blocks.append(UpBlock(1024, 512))
         up_blocks.append(UpBlock(512, 256))
-        up_blocks.append(UpBlock(in_channels=128 + 64, out_channels=128,
-                                 up_conv_in_channels=256, up_conv_out_channels=128))
-        up_blocks.append(UpBlock(in_channels=64 + 3, out_channels=64,
-                                 up_conv_in_channels=128, up_conv_out_channels=64))
+        up_blocks.append(
+            UpBlock(
+                in_channels=128 + 64,
+                out_channels=128,
+                up_conv_in_channels=256,
+                up_conv_out_channels=128,
+            )
+        )
+        up_blocks.append(
+            UpBlock(
+                in_channels=64 + 3,
+                out_channels=64,
+                up_conv_in_channels=128,
+                up_conv_out_channels=64,
+            )
+        )
 
         self.up_blocks = nn.ModuleList(up_blocks)
 

@@ -4,7 +4,7 @@ from torch.autograd import Variable
 
 
 class ContrastiveLoss(nn.Module):
-    """Compute contrastive loss """
+    """Compute contrastive loss"""
 
     def __init__(self, margin=0, measure=False, max_violation=False):
         super(ContrastiveLoss, self).__init__()
@@ -12,7 +12,7 @@ class ContrastiveLoss(nn.Module):
         self.max_violation = max_violation
 
     def sim(self, im, s):
-        """Cosine similarity between all the image and sentence pairs """
+        """Cosine similarity between all the image and sentence pairs"""
         return im.mm(s.t())
 
     def forward(self, im, s):
@@ -30,7 +30,7 @@ class ContrastiveLoss(nn.Module):
         cost_im = (self.margin + scores - d2).clamp(min=0)
 
         # clear diagonals
-        mask = torch.eye(scores.size(0)) > .5
+        mask = torch.eye(scores.size(0)) > 0.5
         I = Variable(mask)
         if torch.cuda.is_available():
             I = I.cuda()
@@ -44,6 +44,7 @@ class ContrastiveLoss(nn.Module):
 
         return cost_s.sum() + cost_im.sum()
 
+
 class HardNegativeContrastiveLoss(nn.Module):
     def __init__(self, nmax=1, margin=0.2):
         super(HardNegativeContrastiveLoss, self).__init__()
@@ -55,18 +56,26 @@ class HardNegativeContrastiveLoss(nn.Module):
         diag = scores.diag()
 
         # Reducing the score on diagonal so there are not selected as hard negative
-        scores = (scores - 2 * torch.diag(scores.diag()))
+        scores = scores - 2 * torch.diag(scores.diag())
 
         sorted_cap, _ = torch.sort(scores, 0, descending=True)
         sorted_img, _ = torch.sort(scores, 1, descending=True)
 
         # Selecting the nmax hardest negative examples
-        max_c = sorted_cap[:self.nmax, :]
-        max_i = sorted_img[:, :self.nmax]
+        max_c = sorted_cap[: self.nmax, :]
+        max_i = sorted_img[:, : self.nmax]
 
         # Margin based loss with hard negative instead of random negative
-        neg_cap = torch.sum(torch.clamp(max_c + (self.margin - diag).view(1, -1).expand_as(max_c), min=0))
-        neg_img = torch.sum(torch.clamp(max_i + (self.margin - diag).view(-1, 1).expand_as(max_i), min=0))
+        neg_cap = torch.sum(
+            torch.clamp(
+                max_c + (self.margin - diag).view(1, -1).expand_as(max_c), min=0
+            )
+        )
+        neg_img = torch.sum(
+            torch.clamp(
+                max_i + (self.margin - diag).view(-1, 1).expand_as(max_i), min=0
+            )
+        )
 
         loss = neg_cap + neg_img
 
