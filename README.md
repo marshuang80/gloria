@@ -60,7 +60,6 @@ gloria_model = gloria.load_gloria(device=device)
 cls_prompts = gloria.generate_chexpert_class_prompts()
 
 # process input images and class prompts 
-txt = gloria_model.process_class_prompts(cls_prompts)
 processed_txt = gloria_model.process_class_prompts(cls_prompts, device)
 processed_imgs = gloria_model.process_img(df['Path'].tolist(), device)
 
