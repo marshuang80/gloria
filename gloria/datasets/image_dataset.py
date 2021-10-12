@@ -178,8 +178,8 @@ class PneumothoraxImageDataset(ImageBaseDataset):
             self.df = pd.read_csv(PNEUMOTHORAX_TEST_CSV)
 
         # only keep positive samples for segmentation
-        if cfg.phase == 'segmentation':
-            self.df['class'] = self.df[' EncodedPixels'].apply(lambda x: x != ' -1')
+        self.df['class'] = self.df[' EncodedPixels'].apply(lambda x: x != ' -1')
+        if cfg.phase == 'segmentation' and split == 'train':
             self.df_neg = self.df[self.df['class'] == False]
             self.df_pos = self.df[self.df['class'] == True]
             n_pos = self.df_pos['ImageId'].nunique()
@@ -258,7 +258,7 @@ class PneumothoraxImageDataset(ImageBaseDataset):
 
         return mask.reshape(width, height).T
 
-    def get_transforms(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    def get_transforms(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
         list_transforms = []
         if self.split == "train":
             list_transforms.extend(

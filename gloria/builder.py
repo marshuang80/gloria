@@ -122,7 +122,13 @@ def build_scheduler(cfg, optimizer, dm=None):
 
 def build_loss(cfg):
 
-    if cfg.train.loss_fn.type == "BCE":
+    if cfg.train.loss_fn.type == "DiceLoss":
+        return loss.segmentation_loss.DiceLoss()
+    elif cfg.train.loss_fn.type == 'FocalLoss':
+        return loss.segmentation_loss.FocalLoss()
+    elif cfg.train.loss_fn.type == 'MixedLoss':
+        return loss.segmentation_loss.MixedLoss(alpha=cfg.train.loss_fn.alpha)
+    elif cfg.train.loss_fn.type == "BCE":
         if cfg.train.loss_fn.class_weights is not None:
             weight = torch.Tensor(cfg.train.loss_fn.class_weights)
             loss_fn = nn.BCEWithLogitsLoss(pos_weight=weight)

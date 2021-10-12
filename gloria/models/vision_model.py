@@ -91,10 +91,10 @@ class PretrainedImageClassifier(nn.Module):
 
     def __init__(self, image_encoder:nn.Module, num_cls: int, feature_dim:int, freeze_encoder:bool = True):
         super(PretrainedImageClassifier, self).__init__()
-        self.image_encoder = image_encoder
+        self.img_encoder = image_encoder
         self.classifier = nn.Linear(feature_dim, num_cls) 
         if freeze_encoder:
-            for param in self.image_encoder.parameters():
+            for param in self.img_encoder.parameters():
                 param.requires_grad = False
 
     def forward(self, x):

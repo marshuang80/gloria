@@ -27,9 +27,8 @@ lightning:
         project: 'GLoRIA'
 
 model: 
-    ckpt_path: "./pretrained/chexpert_resnet50.ckpt"
     vision:
-        model_name: 'resnet_50'
+        model_name: 'gloria_resnet50'
         freeze_cnn: true
         pretrained: false
         num_targets: 1

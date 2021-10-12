@@ -4,6 +4,7 @@ import numpy as np
 import copy 
 import random
 import pandas as pd
+import segmentation_models_pytorch as smp
 
 from . import builder
 from . import utils
@@ -17,11 +18,19 @@ random.seed(6)
 
 
 _MODELS = {
-    "RN50": "./pretrained/chexpert_resnet50_.ckpt"
+    "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
+    "gloria_resnet18": "./pretrained/chexpert_resnet18.ckpt"
 }
 
+
+_SEGMENTATION_MODELS = {
+    "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
+}
+
+
 _FEATURE_DIM = {
-    "RN50": 2048
+    "gloria_resnet50": 2048,
+    "gloria_resnet18": 2048
 }
 
 
@@ -30,7 +39,12 @@ def available_models() -> List[str]:
     return list(_MODELS.keys())
 
 
-def load_gloria(name: str = 'RN50', device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu"): 
+def available_segmentation_models() -> List[str]:
+    """Returns the names of available GLoRIA models"""
+    return list(_SEGMENTATION_MODELS.keys())
+
+
+def load_gloria(name: str = 'gloria_resnet50', device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu"): 
     """Load a GLoRIA model
 
     Parameters
@@ -76,7 +90,7 @@ def load_gloria(name: str = 'RN50', device: Union[str, torch.device] = "cuda" if
     return gloria_model
 
 
-def load_img_classification_model(name: str = 'RN50', device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu", num_cls:int = 1, freeze_encoder: bool = True): 
+def load_img_classification_model(name: str = 'gloria_resnet50', device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu", num_cls:int = 1, freeze_encoder: bool = True): 
     """Load a GLoRIA pretrained classification model
 
     Parameters
@@ -106,6 +120,51 @@ def load_img_classification_model(name: str = 'RN50', device: Union[str, torch.d
     img_model = PretrainedImageClassifier(image_encoder, num_cls, feature_dim, freeze_encoder) 
 
     return img_model
+
+
+def load_img_segmentation_model(name: str = 'gloria_resnet50', device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu"):
+    """Load a GLoRIA pretrained classification model
+
+    Parameters
+    ----------
+    name : str
+        A model name listed by `gloria.available_models()`, or the path to a model checkpoint containing the state_dict
+    device : Union[str, torch.device]
+        The device to put the loaded model
+
+    Returns
+    -------
+    img_model : torch.nn.Module
+        The GLoRIA pretrained image classification model
+    """
+
+    # warnings 
+    if name in _SEGMENTATION_MODELS:
+        ckpt_path = _SEGMENTATION_MODELS[name]
+        base_model = name.split('_')[-1]
+    elif os.path.isfile(name):
+        ckpt_path = name
+        base_model = "resnet50" # TODO 
+    else:
+        raise RuntimeError(f"Model {name} not found; available models = {available_segmentation_models()}")
+
+    import pdb; pdb.set_trace()
+
+    # load base model
+    seg_model = smp.Unet(base_model, encoder_weights=None, activation=None)
+
+    # update weight 
+    ckpt = torch.load(ckpt_path)
+    ckpt_dict = {}
+    for k, v in ckpt['state_dict'].items():
+        if k.startswith('gloria.img_encoder.model'):
+            k = '.'.join(k.split('.')[3:])
+            ckpt_dict[k] = v
+        ckpt_dict['fc.bias'] = None
+        ckpt_dict['fc.weight'] = None
+    seg_model.encoder.load_state_dict(ckpt_dict)
+
+    return seg_model.to(device)
 
 
 def get_similarities(gloria_model, imgs, txts, similarity_type='both'): 

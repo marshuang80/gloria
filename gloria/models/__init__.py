@@ -5,7 +5,7 @@ from . import gloria_model
 from . import retrival_model
 from . import cnn_backbones
 
-
 IMAGE_MODELS = {
     'pretrain': vision_model.ImageEncoder, 
-    'classification': vision_model.ImageClassifier}
+    'classification': vision_model.ImageClassifier,
+    'segmentation': unet.ResnetUNet}

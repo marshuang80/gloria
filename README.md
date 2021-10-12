@@ -22,15 +22,21 @@ $ conda env create -f environment.yml
 
 Make sure to download the pretrained weights from [here](https://stanfordmedicine.box.com/s/j5h7q99f3pfi7enc0dom73m4nsm6yzvh) and place it in the `./pretrained` folder.
 
-### Load GLoRIA pretrained classifier 
+### Load GLoRIA pretrained models 
 ```python
 import torch
 import gloria
 
+# get device
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# load classifier
 num_class = 5   # 5 class classification
 freeze = True   # freeze encoder and only train linear classifier (less likely to overfit when training data is limited)
 model = gloria.load_img_classification_model(num_class=num_class, freeze_encoder=freeze, device=device)
+
+# load segmentation model (UNet)
+seg_model = gloria.load_img_segmentation_model(device=devices)
 ```
 
 ### Zeroshot classification for CheXpert5x200
@@ -102,6 +108,15 @@ python run.py -c ./configs/pneumonia_classification_config.yaml --train --test -
 ```
 
 The **train_pct** flag randomly selects a percentage of the dataset to fine-tune the model. This is use to determine the performance of the model under low data regime.
+
+## Segmentation
+
+Fine-tune the GLoRIA pretrained image model for segmentation with the following command: 
+
+```bash 
+# chexpert
+python run.py -c ./configs/pneumothorax_segmentation_config.yaml --train --test --train_pct 0.01
+```
 
 ### Citation
 

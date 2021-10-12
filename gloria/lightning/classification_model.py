@@ -7,6 +7,7 @@ import copy
 
 from sklearn.metrics import average_precision_score, roc_auc_score
 from .. import builder 
+from .. import gloria
 from pytorch_lightning.core import LightningModule
 
 
@@ -19,19 +20,15 @@ class ClassificationModel(LightningModule):
         super().__init__()
 
         self.cfg = cfg
-        self.model = builder.build_img_model(cfg)
+        
 
-        if self.cfg.model.ckpt_path is not None:
-
-            gloria_model = builder.build_gloria_from_ckpt(cfg.model.ckpt_path)
-
-            self.model.img_encoder = copy.deepcopy(gloria_model.img_encoder)
-
-            if self.cfg.model.vision.freeze_cnn: 
-                for param in self.model.img_encoder.parameters():
-                    param.requires_grad = False
-            del gloria_model
-            print('loaded weights from gloria image encoder')
+        if self.cfg.model.vision.model_name in gloria.available_models():
+            self.model = gloria.load_img_classification_model(
+                self.cfg.model.vision.model_name, 
+                num_cls=self.cfg.model.vision.num_targets,
+                freeze_encoder=self.cfg.model.vision.freeze_cnn,)
+        else:
+            self.model = builder.build_img_model(cfg)
         
         self.loss = builder.build_loss(cfg)
         self.lr = cfg.lightning.trainer.lr
