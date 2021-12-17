@@ -33,7 +33,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # load classifier
 num_class = 5   # 5 class classification
 freeze = True   # freeze encoder and only train linear classifier (less likely to overfit when training data is limited)
-model = gloria.load_img_classification_model(num_class=num_class, freeze_encoder=freeze, device=device)
+model = gloria.load_img_classification_model(num_cls=num_class, freeze_encoder=freeze, device=device)
 
 # load segmentation model (UNet)
 seg_model = gloria.load_img_segmentation_model(device=devices)
