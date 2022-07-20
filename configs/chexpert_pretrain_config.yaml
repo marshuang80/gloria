@@ -26,7 +26,8 @@ lightning:
         save_dir: './data/'
         project: 'gloria_v2'
 
-model: 
+model:
+    norm: false
     gloria: 
         local_loss_weight: 1.0
         global_loss_weight: 1.0
