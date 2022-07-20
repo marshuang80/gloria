@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 
 from . import cnn_backbones
+from omegaconf import OmegaConf
+
 
 
 class ImageEncoder(nn.Module):
@@ -28,7 +30,7 @@ class ImageEncoder(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
 
-        if cfg.model.ckpt_path is not None:
+        if OmegaConf.is_none(cfg.model, "ckpt_path"):
             self.init_trainable_weights()
 
         if cfg.model.vision.freeze_cnn:
