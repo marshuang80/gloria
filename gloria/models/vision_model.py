@@ -10,8 +10,7 @@ class ImageEncoder(nn.Module):
         super(ImageEncoder, self).__init__()
 
         self.output_dim = cfg.model.text.embedding_dim
-        self.norm = cfg.model.norm
-
+        
         model_function = getattr(cnn_backbones, cfg.model.vision.model_name)
         self.model, self.feature_dim, self.interm_feature_dim = model_function(
             pretrained=cfg.model.vision.pretrained
@@ -53,14 +52,6 @@ class ImageEncoder(nn.Module):
 
         global_emb = self.global_embedder(global_features)
         local_emb = self.local_embedder(local_features)
-
-        if self.norm is True:
-            local_emb = local_emb / torch.norm(
-                local_emb, 2, dim=1, keepdim=True
-            ).expand_as(local_emb)
-            global_emb = global_emb / torch.norm(
-                global_emb, 2, dim=1, keepdim=True
-            ).expand_as(global_emb)
 
         return global_emb, local_emb
 
