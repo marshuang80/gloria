@@ -30,8 +30,7 @@ class ImageEncoder(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
 
-        if OmegaConf.is_none(cfg.model, "ckpt_path"):
-            self.init_trainable_weights()
+        self.init_trainable_weights()
 
         if cfg.model.vision.freeze_cnn:
             print("Freezing CNN model")
