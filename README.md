@@ -36,7 +36,7 @@ freeze = True   # freeze encoder and only train linear classifier (less likely t
 model = gloria.load_img_classification_model(num_cls=num_class, freeze_encoder=freeze, device=device)
 
 # load segmentation model (UNet)
-seg_model = gloria.load_img_segmentation_model(device=devices)
+seg_model = gloria.load_img_segmentation_model(device=device)
 ```
 
 ### Zeroshot classification for CheXpert5x200
