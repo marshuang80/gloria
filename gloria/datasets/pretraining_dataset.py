@@ -1,3 +1,4 @@
+import random
 import re
 import os
 import numpy as np
@@ -40,6 +41,11 @@ class MultimodalPretrainingDataset(data.Dataset):
 
         # load studies and study to text mapping
         self.filenames, self.path2sent = self.load_text_data(split)
+
+        # sample data
+        if cfg.data.frac != 1 and split == "train":
+            n = int(len(self.filenames) * cfg.data.frac)
+            self.filenames = random.sample(self.filenames, n)
 
         # create BERT tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.model.text.bert_type)
