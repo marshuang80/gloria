@@ -1,6 +1,7 @@
 from numpy.lib.function_base import extract
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from . import cnn_backbones
 
@@ -8,7 +9,8 @@ from . import cnn_backbones
 class ImageEncoder(nn.Module):
     def __init__(self, cfg):
         super(ImageEncoder, self).__init__()
-
+        
+        self.cfg = cfg
         self.output_dim = cfg.model.text.embedding_dim
         self.norm = cfg.model.norm
 
@@ -42,7 +44,8 @@ class ImageEncoder(nn.Module):
         if "resnet" or "resnext" in self.cfg.model.vision.model_name:
             global_ft, local_ft = self.resnet_forward(x, extract_features=True)
         elif "densenet" in self.cfg.model.vision.model_name:
-            global_ft, local_ft = self.dense_forward(x, extract_features=True)
+            global_ft, local_ft = self.densenet_forward(x, extract_features=True)
+        # global_ft, local_ft = self.densenet_forward(x, extract_features=True)
 
         if get_local:
             return global_ft, local_ft
@@ -86,7 +89,13 @@ class ImageEncoder(nn.Module):
         return x, local_features
 
     def densenet_forward(self, x, extract_features=False):
-        pass
+        x = self.model.features(x)
+        x = F.relu(x, inplace=True)
+        local_features = x
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+
+        return x, local_features
 
     def init_trainable_weights(self):
         initrange = 0.1

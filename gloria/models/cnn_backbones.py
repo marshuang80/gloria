@@ -44,7 +44,7 @@ def densenet_121(pretrained=True):
     model = models_2d.densenet121(pretrained=pretrained)
     feature_dims = model.classifier.in_features
     model.classifier = Identity()
-    return model, feature_dims, None
+    return model, feature_dims, 1024
 
 
 def densenet_161(pretrained=True):

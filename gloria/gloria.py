@@ -20,6 +20,7 @@ random.seed(6)
 _MODELS = {
     "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
     "gloria_resnet18": "./pretrained/chexpert_resnet18.ckpt",
+    "gloria_densenet121": "./pretrained/chexpert_densenet121.ckpt",
 }
 
 
@@ -28,7 +29,7 @@ _SEGMENTATION_MODELS = {
 }
 
 
-_FEATURE_DIM = {"gloria_resnet50": 2048, "gloria_resnet18": 2048}
+_FEATURE_DIM = {"gloria_resnet50": 2048, "gloria_resnet18": 2048, "gloria_densenet121": 1024}
 
 
 def available_models() -> List[str]:
