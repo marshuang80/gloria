@@ -28,7 +28,7 @@ lightning:
 
 model: 
     vision:
-        model_name: 'gloria_resnet50'
+        model_name: 'gloria_densenet121'
         freeze_cnn: true
         pretrained: false
         num_targets: 5
