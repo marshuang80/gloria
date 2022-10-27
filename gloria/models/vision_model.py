@@ -1,6 +1,7 @@
 from numpy.lib.function_base import extract
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from . import cnn_backbones
 
@@ -11,6 +12,7 @@ class ImageEncoder(nn.Module):
 
         self.output_dim = cfg.model.text.embedding_dim
         self.norm = cfg.model.norm
+        self.cfg = cfg
 
         model_function = getattr(cnn_backbones, cfg.model.vision.model_name)
         self.model, self.feature_dim, self.interm_feature_dim = model_function(
@@ -39,10 +41,10 @@ class ImageEncoder(nn.Module):
 
     def forward(self, x, get_local=False):
         # --> fixed-size input: batch x 3 x 299 x 299
-        if "resnet" or "resnext" in self.cfg.model.vision.model_name:
+        if "resne" in self.cfg.model.vision.model_name:
             global_ft, local_ft = self.resnet_forward(x, extract_features=True)
         elif "densenet" in self.cfg.model.vision.model_name:
-            global_ft, local_ft = self.dense_forward(x, extract_features=True)
+            global_ft, local_ft = self.densenet_forward(x, extract_features=True)
 
         if get_local:
             return global_ft, local_ft
@@ -86,7 +88,29 @@ class ImageEncoder(nn.Module):
         return x, local_features
 
     def densenet_forward(self, x, extract_features=False):
-        pass
+        features = self.model.features.conv0(x)
+        features = self.model.features.norm0(features)
+        features = self.model.features.relu0(features)
+        features = self.model.features.pool0(features)
+
+        features = self.model.features.denseblock1(features)
+        features = self.model.features.transition1(features)
+
+        features = self.model.features.denseblock2(features)
+        features = self.model.features.transition2(features)
+
+        local_features = self.model.features.denseblock3(features)
+        features = self.model.features.transition3(local_features)
+
+        features = self.model.features.denseblock4(features)
+        features = self.model.features.norm5(features)
+
+        x = F.relu(features, inplace=True)
+        x = F.adaptive_avg_pool2d(x, (1, 1))
+        x = torch.flatten(x, 1)
+        
+        return x, local_features
+      
 
     def init_trainable_weights(self):
         initrange = 0.1
