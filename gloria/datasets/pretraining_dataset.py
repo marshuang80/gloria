@@ -42,6 +42,9 @@ class MultimodalPretrainingDataset(data.Dataset):
         # load studies and study to text mapping
         self.filenames, self.path2sent = self.load_text_data(split)
 
+        # TODO: hotfix for CheXpert on aimi2
+        self.path2sent = {k.replace('/home/mars/git/embeddingx_v2/data/', '/data4/gloria/'):v for k,v in self.path2sent.items()}
+
         # sample data
         if cfg.data.frac != 1 and split == "train":
             n = int(len(self.filenames) * cfg.data.frac)
