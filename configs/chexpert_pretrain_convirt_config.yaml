@@ -1,4 +1,4 @@
-experiment_name: 'gloria_pretrain'
+experiment_name: 'convirt_pretrain'
 phase: 'pretrain'
 
 lightning:
@@ -28,7 +28,7 @@ lightning:
 
 model: 
     gloria: 
-        local_loss_weight: 1.0
+        local_loss_weight: 0
         global_loss_weight: 1.0
         temp1: 4.0
         temp2: 5.0
