@@ -5,11 +5,13 @@ import copy
 import random
 import pandas as pd
 import segmentation_models_pytorch as smp
+import torchvision
 
 from . import builder
 from . import utils
 from . import constants
 from .models.vision_model import PretrainedImageClassifier
+from .models import cnn_backbones
 from typing import Union, List
 
 
@@ -20,7 +22,23 @@ random.seed(6)
 _MODELS = {
     "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
     "gloria_resnet18": "./pretrained/chexpert_resnet18.ckpt",
-    "gloria_densenet121": "./pretrained/chexpert_densenet121.ckpt",
+    "gloria_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
+    "moco_densenet121": "./pretrained/moco_chexpert_densenet121.ckpt",
+    "supervised_densenet121": "./pretrained/supervised_chexpert_densenet121.ckpt",
+    "gloria_intermountain_spt_densenet121": "./pretrained/gloria_intermountain_spt_densenet121.ckpt",
+    "moco_intermountain_spt_densenet121": "./pretrained/moco_intermountain_spt_densenet121.ckpt",
+    "gloria_intermountain_dapt_densenet121": "./pretrained/gloria_intermountain_dapt_densenet121.ckpt",
+    "moco_intermountain_dapt_densenet121": "./pretrained/moco_intermountain_dapt_densenet121.ckpt",
+    "gloria_candid_ptx_spt_densenet121": "./pretrained/gloria_candid_ptx_spt_densenet121.ckpt",
+    "gloria_candid_ptx_dapt_densenet121": "./pretrained/gloria_candid_ptx_dapt_densenet121.ckpt",
+    "resnet18": cnn_backbones.resnet_18,
+    "resnet34": cnn_backbones.resnet_34,
+    "resnet50": cnn_backbones.resnet_50,
+    "densenet121": cnn_backbones.densenet_121,
+    "densenet161": cnn_backbones.densenet_161,
+    "densenet169": cnn_backbones.densenet_169,
+    "resnext50": cnn_backbones.resnext_50,
+    "resnext100": cnn_backbones.resnext_100,
 }
 
 
@@ -29,7 +47,7 @@ _SEGMENTATION_MODELS = {
 }
 
 
-_FEATURE_DIM = {"gloria_resnet50": 2048, "gloria_resnet18": 2048, "gloria_densenet121": 1024}
+_FEATURE_DIM = {"resnet50": 2048, "resnet18": 2048, "densenet121": 1024}
 
 
 def available_models() -> List[str]:
@@ -100,6 +118,7 @@ def load_img_classification_model(
     device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu",
     num_cls: int = 1,
     freeze_encoder: bool = True,
+    pretrained: bool = True
 ):
     """Load a GLoRIA pretrained classification model
 
@@ -120,13 +139,50 @@ def load_img_classification_model(
         The GLoRIA pretrained image classification model
     """
 
-    # load pretrained image encoder
-    gloria_model = load_gloria(name, device)
-    image_encoder = copy.deepcopy(gloria_model.img_encoder)
-    del gloria_model
+    backbone_name = name.split('_')[-1]
+
+    # load gloria pretrained image encoder
+    if name.startswith('gloria'):
+        gloria_model = load_gloria(name, device)
+        image_encoder = copy.deepcopy(gloria_model.img_encoder)
+        del gloria_model
+
+    # if name doesn't start with gloria, 
+    # load a dummy gloria model and overload the params with the pretrained model's state dict
+    else:
+        gloria_name = f'gloria_{backbone_name}'
+        gloria_model = load_gloria(gloria_name, device)
+        image_encoder = copy.deepcopy(gloria_model.img_encoder)
+        del gloria_model
+
+        image_model, _, _ = _MODELS[backbone_name](pretrained=pretrained)
+        image_encoder.model = copy.deepcopy(image_model)
+        del image_model
+
+        if name.startswith('supervised'):
+            state_dict = torch.load(_MODELS[name])['model_state']
+            for k in list(state_dict.keys()):
+                # retain only encoder_q up to before the embedding layer
+                if k.startswith('module.model') and not k.startswith('module.model.classifier'):
+                    # remove prefix
+                    state_dict[k[len("module.model."):]] = state_dict[k]
+                # delete renamed or unused k
+                del state_dict[k]
+            image_encoder.model.load_state_dict(state_dict)
+
+        elif name.startswith('moco'):
+            state_dict = torch.load(_MODELS[name])['state_dict']
+            for k in list(state_dict.keys()):
+                # retain only encoder_q up to before the embedding layer
+                if k.startswith('module.encoder_q') and not (k.startswith('module.encoder_q.fc') or k.startswith('module.encoder_q.classifier')):
+                    # remove prefix
+                    state_dict[k[len("module.encoder_q."):]] = state_dict[k]
+                # delete renamed or unused k
+                del state_dict[k]
+            image_encoder.model.load_state_dict(state_dict)
 
     # create image classifier
-    feature_dim = _FEATURE_DIM[name]
+    feature_dim = _FEATURE_DIM[backbone_name]
     img_model = PretrainedImageClassifier(
         image_encoder, num_cls, feature_dim, freeze_encoder
     )

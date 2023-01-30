@@ -8,6 +8,7 @@ class BertEncoder(nn.Module):
         super(BertEncoder, self).__init__()
 
         self.bert_type = cfg.model.text.bert_type
+        self.model_max_length = cfg.model.text.model_max_lengths
         self.last_n_layers = cfg.model.text.last_n_layers
         self.aggregate_method = cfg.model.text.aggregate_method
         self.norm = cfg.model.text.norm
@@ -19,7 +20,7 @@ class BertEncoder(nn.Module):
             self.bert_type, output_hidden_states=True
         )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.bert_type)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.bert_type, model_max_length=self.model_max_length)
         self.idxtoword = {v: k for k, v in self.tokenizer.get_vocab().items()}
 
         self.emb_global, self.emb_local = None, None
@@ -122,6 +123,7 @@ class BertEncoder(nn.Module):
         # use last layer
         else:
             word_embeddings, sent_embeddings = outputs[0], outputs[1]
+            sents = [[self.idxtoword[w.item()] for w in sent] for sent in ids]
 
         batch_dim, num_words, feat_dim = word_embeddings.shape
         word_embeddings = word_embeddings.view(batch_dim * num_words, feat_dim)

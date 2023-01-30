@@ -6,7 +6,6 @@ import pandas as pd
 import cv2
 import tqdm
 import pickle
-import numpy.random as random
 import torch
 import torch.utils.data as data
 
@@ -29,38 +28,68 @@ class MultimodalPretrainingDataset(data.Dataset):
 
         self.cfg = cfg
         self.transform = transform
-        self.max_word_num = self.cfg.data.text.captions_per_image
+        self.max_word_num = self.cfg.data.text.dword_num
+        self.captions_per_image = self.cfg.data.text.captions_per_image
 
-        # read CheXpert csv file
-        csv_path = os.path.join(CHEXPERT_DATA_DIR, CHEXPERT_MASTER_CSV)
-        self.df = pd.read_csv(csv_path)
-        self.df[CHEXPERT_PATH_COL] = self.df[CHEXPERT_PATH_COL].apply(
-            lambda x: os.path.join(CHEXPERT_DATA_DIR, "/".join(x.split("/")[1:]))
-        )
+        # read CheXpert, CANDID-PTX or Intermountain csv file
+        if self.cfg.data.dataset == 'intermountain':
+            self.data_dir = INTERMOUNTAIN_DATA_DIR
+            self.master_csv = INTERMOUNTAIN_TRAIN_VAL_CSV
+            csv_path = os.path.join(self.data_dir, self.master_csv)
+            
+            self.df = pd.read_csv(csv_path)
+        elif self.cfg.data.dataset == 'candid_ptx':
+            self.data_dir = CANDID_PTX_DATA_DIR
+            self.master_csv = CANDID_PTX_TRAIN_VAL_CSV
+            csv_path = os.path.join(self.data_dir, self.master_csv)
+            
+            self.df = pd.read_csv(csv_path)
+        else:
+            self.data_dir = CHEXPERT_DATA_DIR
+            self.master_csv = CHEXPERT_MASTER_CSV
+            csv_path = os.path.join(self.data_dir, self.master_csv)
+
+            self.df = pd.read_csv(csv_path)
+            self.df[CHEXPERT_PATH_COL] = self.df[CHEXPERT_PATH_COL].apply(
+                lambda x: os.path.join(CHEXPERT_DATA_DIR, "/".join(x.split("/")[1:]))
+            )
+
+        print("Remove non-frontal studies")
+        print(f"Before: {self.df.shape[0]}")
         self.df = self.df[self.df[CHEXPERT_VIEW_COL] == "Frontal"]
+        print(f"After: {self.df.shape[0]}")
 
         # load studies and study to text mapping
         self.filenames, self.path2sent = self.load_text_data(split)
 
         # TODO: hotfix for CheXpert on aimi2
-        self.path2sent = {k.replace('/home/mars/git/embeddingx_v2/data/', '/data4/gloria/'):v for k,v in self.path2sent.items()}
+        self.path2sent = {k.replace('/home/mars/git/embeddingx_v2/data/', '/home/cvanuden/'):v for k,v in self.path2sent.items()}
+
+        print("Remove unprocessed studies")
+        print(f"Before: {len(self.filenames)}")
+        self.filenames = [f for f in self.filenames if f in self.path2sent]
+        print(f"After: {len(self.filenames)}")
 
         # sample data
+        print("Sample data")
+        print(f"Before: {len(self.filenames)}")
         if cfg.data.frac != 1 and split == "train":
             n = int(len(self.filenames) * cfg.data.frac)
             self.filenames = random.sample(self.filenames, n)
+        print(f"After: {len(self.filenames)}")
 
         # create BERT tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.model.text.bert_type)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.model.text.bert_type, model_max_length=self.cfg.model.text.model_max_length)
 
     def load_text_data(self, split):
 
         # get study to captions mapping
-        filepath = os.path.join(CHEXPERT_DATA_DIR, "captions.pickle")
+        # read CheXpert or Intermountain csv file
+        filepath = os.path.join(self.data_dir, "captions.pickle")
         if not os.path.isfile(filepath):
-            print(f"Caption file {filepath} does not exit. Creating captions...")
+            print(f"Caption file {filepath} does not exist. Creating captions...")
             path2sent, to_remove = self.create_path_2_sent_mapping(
-                self.df, self.max_word_num
+                self.df, self.max_word_num, self.captions_per_image
             )
             with open(filepath, "wb") as f:
                 pickle.dump([path2sent, to_remove], f, protocol=2)
@@ -89,7 +118,7 @@ class MultimodalPretrainingDataset(data.Dataset):
         if self.cfg.data.text.full_report is True:
             sent = " ".join(series_sents)
         else:
-            sent_ix = random.randint(0, len(series_sents))
+            sent_ix = np.random.randint(0, len(series_sents))
             sent = series_sents[sent_ix]
 
         tokens = self.tokenizer(
@@ -130,8 +159,32 @@ class MultimodalPretrainingDataset(data.Dataset):
     def __len__(self):
         return len(self.filenames)
 
-    def create_path_2_sent_mapping(self, df, max_word_num):
+    def _process_caption(self, cap):
+        if len(cap) == 0:
+            return '', 0
 
+        cap = cap.replace("\ufffd", " ")
+        # picks out sequences of alphanumeric characters as tokens
+        # and drops everything else
+        tokenizer = RegexpTokenizer(r"\w+")
+        tokens = tokenizer.tokenize(cap.lower())
+
+        # TODO: < 3 has instances of ['no', 'pneumothorax'], ['clear', 'lung']
+        if len(tokens) <= 1:
+            # if len(tokens) < 3:
+            return '', 0
+
+        # filter tokens for current sentence
+        included_tokens = []
+        for t in tokens:
+            t = t.encode("ascii", "ignore").decode("ascii")
+            if len(t) > 0:
+                included_tokens.append(t)
+
+        return " ".join(included_tokens), len(included_tokens)
+
+
+    def create_path_2_sent_mapping(self, df, max_word_num, captions_per_image):
         sent_lens, num_sents, to_remove = [], [], []
         path2sent = {}
         for idx, row in tqdm.tqdm(df.iterrows(), total=df.shape[0]):
@@ -154,55 +207,64 @@ class MultimodalPretrainingDataset(data.Dataset):
             captions = [point.split(".") for point in captions]
             captions = [sent for point in captions for sent in point]
 
+            ### START: ONLY DO THIS FOR INTERMOUNTAIN DATA ###
+            # captions = '.'.join(captions)
+            # split_on_impression = captions.split('IMPRESSION:')
+            # if len(split_on_impression) == 1:
+            #     findings_captions = captions
+            #     impressions_captions = ''
+            # elif len(split_on_impression) == 2: 
+            #      findings_captions, impressions_captions = split_on_impression
+            # else:
+            #     print(f'UH OH! Too many impressions for sentence {captions}. Taking last two.')
+            #     split_on_impression = [section for section in split_on_impression if len(section) > 0]
+            #     findings_captions, impressions_captions = split_on_impression[-2:]
+                
+            # findings_captions = [cap for cap in findings_captions.split('.') if len(cap) > 0]
+            # impressions_captions = [cap for cap in impressions_captions.split('.') if len(cap) > 0]
+
+            # n_findings_to_select = captions_per_image - len(impressions_captions)
+            # if n_findings_to_select > 0:
+            #     # findings_captions = random.sample(findings_captions, min(len(findings_captions), n_findings_to_select))
+            #     # take n_findings_to_select shortest captions
+            #     findings_captions = sorted(findings_captions, key=lambda x: len(x), reverse=False)[:n_findings_to_select]
+            # else:
+            #     findings_captions = []
+
+            # captions = findings_captions + impressions_captions
+            ### END: ONLY DO THIS FOR INTERMOUNTAIN DATA ###
+
             cnt = 0
             study_sent = []
             # create tokens from captions
             for cap in captions:
 
-                if len(cap) == 0:
-                    continue
-
-                cap = cap.replace("\ufffd\ufffd", " ")
-                # picks out sequences of alphanumeric characters as tokens
-                # and drops everything else
-                tokenizer = RegexpTokenizer(r"\w+")
-                tokens = tokenizer.tokenize(cap.lower())
-
-                # TODO: < 3 has instances of ['no', 'pneumothorax'], ['clear', 'lung']
-                if len(tokens) <= 1:
-                    # if len(tokens) < 3:
-                    continue
-
-                # filter tokens for current sentence
-                included_tokens = []
-                for t in tokens:
-                    t = t.encode("ascii", "ignore").decode("ascii")
-                    if len(t) > 0:
-                        included_tokens.append(t)
-                study_sent.append(" ".join(included_tokens))
+                processed_cap, len_cap = self._process_caption(cap)
 
                 # check if reached maximum number of words in the sentences
-                cnt += len(included_tokens)
-                if cnt == max_word_num:
+                cnt += len_cap
+                if cnt > self.max_word_num:
                     break
 
-                sent_lens.append(len(included_tokens))
-            num_sents.append(len(study_sent))
+                if len_cap > 0:
+                    study_sent.append(processed_cap)
+                    sent_lens.append(len_cap)
 
-            # remove paths without setnences
+            # remove paths without sentences
             if len(study_sent) > 0:
                 path2sent[row[CHEXPERT_PATH_COL]] = study_sent
+                num_sents.append(len(study_sent))
             else:
                 to_remove.append(row[CHEXPERT_PATH_COL])
 
-        # get report word/setence statistics
+        # get report word/sentence statistics
         sent_lens = np.array(sent_lens)
         num_sents = np.array(num_sents)
         print(
-            f"sent lens: {sent_lens.min()},{sent_lens.mean()},{sent_lens.max()} [{np.percentile(sent_lens, 5)}, {np.percentile(sent_lens, 95)}]"
+            f"sent lens: {sent_lens.min()},{np.median(sent_lens)},{sent_lens.mean()},{sent_lens.max()} [{np.percentile(sent_lens, 5)}, {np.percentile(sent_lens, 95)}]"
         )
         print(
-            f"num sents: {num_sents.min()},{num_sents.mean()},{num_sents.max()} [{np.percentile(num_sents, 5)}, {np.percentile(num_sents, 95)}]"
+            f"num sents: {num_sents.min()},{np.median(num_sents)},{num_sents.mean()},{num_sents.max()} [{np.percentile(num_sents, 5)}, {np.percentile(num_sents, 95)}]"
         )
 
         return path2sent, to_remove
@@ -261,7 +323,7 @@ def multimodal_collate_fn(batch):
 
     imgs, cap_len, ids, tokens, attention, path = [], [], [], [], [], []
 
-    # flattern
+    # flatten
     for b in batch:
         img, cap, cap_l, p = b
         imgs.append(img)

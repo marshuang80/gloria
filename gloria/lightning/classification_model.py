@@ -5,7 +5,7 @@ import json
 import os
 import copy
 
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
 from .. import builder
 from .. import gloria
 from pytorch_lightning.core import LightningModule
@@ -26,6 +26,7 @@ class ClassificationModel(LightningModule):
                 self.cfg.model.vision.model_name,
                 num_cls=self.cfg.model.vision.num_targets,
                 freeze_encoder=self.cfg.model.vision.freeze_cnn,
+                pretrained=self.cfg.model.vision.pretrained,
             )
         else:
             self.model = builder.build_img_model(cfg)
@@ -86,26 +87,59 @@ class ClassificationModel(LightningModule):
         y = y.detach().cpu().numpy()
         prob = prob.detach().cpu().numpy()
 
-        auroc_list, auprc_list = [], []
+        macro_auroc_list, macro_auprc_list, macro_f1_list = [], [], []
+        all_y_cls, all_prob_cls, all_pred_cls = [], [], []
         for i in range(y.shape[1]):
             y_cls = y[:, i]
             prob_cls = prob[:, i]
+            pred_cls = (prob_cls > 0.5).astype(int)
 
+            # print(split, sum(y_cls), len(y_cls))
             if np.isnan(prob_cls).any():
-                auprc_list.append(0)
+                macro_auroc_list.append(0)
+                macro_auprc_list.append(0)
                 auroc_list.append(0)
             else:
-                auprc_list.append(average_precision_score(y_cls, prob_cls))
-                auroc_list.append(roc_auc_score(y_cls, prob_cls))
+                try:
+                    macro_auroc_for_task = roc_auc_score(y_cls, prob_cls)
+                except:
+                    macro_auroc_for_task = 0
+                macro_auroc_list.append(macro_auroc_for_task)
+                macro_auprc_list.append(average_precision_score(y_cls, prob_cls))
+                macro_f1_list.append(f1_score(y_cls, pred_cls))
 
-        auprc = np.mean(auprc_list)
-        auroc = np.mean(auroc_list)
+                all_y_cls.extend(y_cls)
+                all_prob_cls.extend(prob_cls)
+                all_pred_cls.extend(pred_cls)
 
-        self.log(f"{split}_auroc", auroc, on_epoch=True, logger=True, prog_bar=True)
-        self.log(f"{split}_auprc", auprc, on_epoch=True, logger=True, prog_bar=True)
+        macro_auroc = np.mean(macro_auroc_list)
+        macro_auprc = np.mean(macro_auprc_list)
+        macro_f1 = np.mean(macro_f1_list)
+
+        try:
+            micro_auroc = roc_auc_score(all_y_cls, all_prob_cls)
+        except:
+            micro_auroc = 0
+        micro_auprc = average_precision_score(all_y_cls, all_prob_cls)
+        micro_f1 = f1_score(all_y_cls, all_pred_cls)
+
+        self.log(f"{split}_macro_auroc", macro_auroc, on_epoch=True, logger=True, prog_bar=True)
+        self.log(f"{split}_macro_auprc", macro_auprc, on_epoch=True, logger=True, prog_bar=True)
+        self.log(f"{split}_macro_f1", macro_f1, on_epoch=True, logger=True, prog_bar=True)
+
+        self.log(f"{split}_micro_auroc", micro_auroc, on_epoch=True, logger=True, prog_bar=True)
+        self.log(f"{split}_micro_auprc", micro_auprc, on_epoch=True, logger=True, prog_bar=True)
+        self.log(f"{split}_micro_f1", micro_f1, on_epoch=True, logger=True, prog_bar=True)
 
         if split == "test":
             results_csv = os.path.join(self.cfg.output_dir, "results.csv")
-            results = {"auorc": auroc, "auprc": auprc}
+            results = {
+                "macro_auroc": macro_auroc, 
+                "macro_auprc": macro_auprc,
+                "macro_f1": macro_f1,
+                "micro_auroc": micro_auroc, 
+                "micro_auprc": micro_auprc,
+                "micro_f1": micro_f1,
+            }
             with open(results_csv, "w") as fp:
                 json.dump(results, fp)

@@ -128,5 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# repo-specific
 data/
 pretrained/

@@ -19,6 +19,12 @@ class ImageEncoder(nn.Module):
             pretrained=cfg.model.vision.pretrained
         )
 
+        if cfg.model.vision.pretrained_path is not None:
+            print(f'Loading image encoder from {cfg.model.vision.pretrained_path}')
+            pretrained_model_state_dict = torch.load(cfg.model.vision.pretrained_path)['state_dict']
+            pretrained_model_state_dict = {k.split('gloria.img_encoder.model.')[-1]:v for k, v in pretrained_model_state_dict.items() if 'gloria.img_encoder.model.' in k}
+            self.model.load_state_dict(pretrained_model_state_dict)
+
         self.global_embedder = nn.Linear(self.feature_dim, self.output_dim)
         self.local_embedder = nn.Conv2d(
             self.interm_feature_dim,

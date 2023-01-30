@@ -47,6 +47,12 @@ def get_parser():
         "--train_pct", type=float, default=1.0, help="Percent of training data"
     )
     parser.add_argument(
+        "--start_splits",
+        type=int,
+        default=0,
+        help="Train on n number of splits used for training. Start at split start_splits, defaults to 0",
+    )
+    parser.add_argument(
         "--splits",
         type=int,
         default=1,
@@ -90,6 +96,7 @@ def main(cfg, args):
     # setup pytorch-lightning trainer
     cfg.lightning.trainer.val_check_interval = args.val_check_interval
     cfg.lightning.trainer.auto_lr_find = args.auto_lr_find
+    cfg.lightning.trainer.num_sanity_val_steps = -1
     trainer_args = argparse.Namespace(**cfg.lightning.trainer)
     trainer = Trainer.from_argparse_args(
         args=trainer_args, deterministic=True, callbacks=callbacks, logger=logger
@@ -132,8 +139,10 @@ if __name__ == "__main__":
     if args.splits is not None:
         cfg.experiment_name = f"{cfg.experiment_name}_{args.train_pct}"  # indicate % data used in trial name
 
+    original_ckpt_dirpath = cfg.lightning.checkpoint_callback.dirpath
+
     # loop over the number of independent training splits, defaults to 1 split
-    for split in np.arange(args.splits):
+    for split in np.arange(args.start_splits, args.splits):
 
         # get current time
         now = datetime.datetime.now(tz.tzlocal())
@@ -147,9 +156,10 @@ if __name__ == "__main__":
         cfg.extension = str(args.random_seed) if args.splits != 1 else timestamp
         cfg.output_dir = f"./data/output/{cfg.experiment_name}/{cfg.extension}"
         cfg.lightning.checkpoint_callback.dirpath = os.path.join(
-            cfg.lightning.checkpoint_callback.dirpath,
+            original_ckpt_dirpath,
             f"{cfg.experiment_name}/{cfg.extension}",
         )
+        print(cfg.lightning.checkpoint_callback.dirpath)
 
         # create directories
         if not os.path.exists(cfg.lightning.logger.save_dir):

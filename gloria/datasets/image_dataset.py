@@ -4,6 +4,7 @@ import torch
 import pydicom
 import numpy as np
 import pandas as pd
+import random
 
 from PIL import Image
 from torch.utils.data import Dataset
@@ -106,6 +107,13 @@ class CheXpertImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
+        if cfg.model.vision.remove_task is None or cfg.model.vision.remove_task == '':
+            remove_task = []
+        else:
+            remove_task = cfg.model.vision.remove_task.split(',')
+        self.tasks = [task for task in CHEXPERT_TASKS if task not in remove_task]
+
+        print(f'Tasks: {self.tasks}')
 
         # read in csv file
         if split == "train":
@@ -117,7 +125,11 @@ class CheXpertImageDataset(ImageBaseDataset):
 
         # sample data
         if cfg.data.frac != 1 and split == "train":
+            print("Sample data")
+            print(f"Before: {self.df.shape[0]}")
             self.df = self.df.sample(frac=cfg.data.frac)
+            print(f"After: {self.df.shape[0]}")
+
 
         # filter image type
         if img_type != "All":
@@ -132,7 +144,7 @@ class CheXpertImageDataset(ImageBaseDataset):
         self.df = self.df.fillna(0)
 
         # replace uncertains
-        uncertain_mask = {k: -1 for k in CHEXPERT_COMPETITION_TASKS}
+        uncertain_mask = {k: -1 for k in CHEXPERT_TASKS}
         self.df = self.df.replace(uncertain_mask, CHEXPERT_UNCERTAIN_MAPPINGS)
         super(CheXpertImageDataset, self).__init__(cfg, split, transform)
 
@@ -145,7 +157,129 @@ class CheXpertImageDataset(ImageBaseDataset):
         x = self.read_from_jpg(img_path)
 
         # get labels
-        y = list(row[CHEXPERT_COMPETITION_TASKS])
+        y = list(row[self.tasks])
+        y = torch.tensor(y)
+
+
+        return x, y
+
+    def __len__(self):
+        return len(self.df)
+
+
+class IntermountainImageDataset(ImageBaseDataset):
+    def __init__(self, cfg, split="train", transform=None, img_type="Frontal"):
+
+        if INTERMOUNTAIN_DATA_DIR is None:
+            raise RuntimeError(
+                "Intermountain data path empty. Update INTERMOUNTAIN_DATA_DIR in ./gloria/constants.py"
+            )
+
+        self.cfg = cfg
+
+        # read in csv file
+        self.df = pd.read_csv(INTERMOUNTAIN_MASTER_CSV)
+
+        # filter image type
+        if img_type != "All":
+            self.df = self.df[self.df[INTERMOUNTAIN_VIEW_COL] == img_type]
+            
+        # fill na with 0s
+        self.df = self.df.fillna(0)
+
+        # replace uncertains
+        uncertain_mask = {k: -1 for k in INTERMOUNTAIN_TASKS}
+        self.df = self.df.replace(uncertain_mask, INTERMOUNTAIN_UNCERTAIN_MAPPINGS)
+        self.df = self.df.replace(INTERMOUNTAIN_REPLACE_MAPPINGS)
+
+        self.df = self.df[self.df[INTERMOUNTAIN_SPLIT_COL] == split].reset_index(drop=True)
+
+        # sample data
+        if cfg.data.frac != 1 and split == "train":
+            print("Sample data")
+            print(f"Before: {self.df.shape[0]}")
+            self.df = self.df.sample(frac=cfg.data.frac)
+            # add_positives = []
+            # for task in INTERMOUNTAIN_TASKS:
+            #     add_positives.append(self.df[self.df[task] == 1].sample(n=1))
+            # self.df = pd.concat([self.df]+add_positives)
+            print(f"After: {self.df.shape[0]}")
+
+        print(f'{split}: {self.df.shape[0]}')
+        for task in INTERMOUNTAIN_TASKS:
+            print(task, np.sum(self.df[task]), np.unique(self.df[task]))
+
+        super(IntermountainImageDataset, self).__init__(cfg, split, transform)
+
+    def __getitem__(self, index):
+
+        row = self.df.iloc[index]
+
+        # get image
+        img_path = row[INTERMOUNTAIN_PATH_COL]
+        x = self.read_from_jpg(img_path)
+
+        # get labels
+        y = list(row[INTERMOUNTAIN_TASKS])
+        y = torch.tensor(y)
+
+        return x, y
+
+    def __len__(self):
+        return len(self.df)
+
+class CandidPtxImageDataset(ImageBaseDataset):
+    def __init__(self, cfg, split="train", transform=None, img_type="Frontal"):
+
+        if CANDID_PTX_DATA_DIR is None:
+            raise RuntimeError(
+                "CANDID-PTX data path empty. Update CANDID_PTX_DATA_DIR in ./gloria/constants.py"
+            )
+
+        self.cfg = cfg
+
+        # read in csv file
+        self.df = pd.read_csv(CANDID_PTX_MASTER_CSV)
+
+        # fill na with 0s
+        self.df = self.df.fillna(0)
+
+        # convert labels to float
+        for task in CANDID_PTX_TASKS:
+            self.df[task] = self.df[task].astype(float)
+
+        self.df = self.df[self.df[CANDID_PTX_SPLIT_COL] == split].reset_index(drop=True)
+
+        # sample data
+        if cfg.data.frac != 1 and split == "train":
+            print("Sample data")
+            print(f"Before: {self.df.shape[0]}")
+            self.df = self.df.sample(frac=cfg.data.frac)
+
+            if cfg.data.frac == 0.01:
+                add_positives = []
+                for task in CANDID_PTX_TASKS:
+                    add_positives.append(self.df[self.df[task] == 1].sample(n=1))
+                self.df = pd.concat([self.df]+add_positives)
+                
+            print(f"Before: {self.df.shape[0]}")
+
+        print(f'{split}: {self.df.shape[0]}')
+        for task in CANDID_PTX_TASKS:
+            print(task, np.sum(self.df[task]), np.unique(self.df[task]))
+
+        super(CandidPtxImageDataset, self).__init__(cfg, split, transform)
+
+    def __getitem__(self, index):
+
+        row = self.df.iloc[index]
+
+        # get image
+        img_path = row[CANDID_PTX_PATH_COL]
+        x = self.read_from_jpg(img_path)
+
+        # get labels
+        y = list(row[CANDID_PTX_TASKS])
         y = torch.tensor(y)
 
         return x, y

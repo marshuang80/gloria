@@ -1,19 +1,20 @@
 from pathlib import Path
 
 # CheXpert constants
-CHEXPERT_DATA_DIR = Path("/data4/gloria/chexpert/CheXpert-v1.0")
+CHEXPERT_DATA_DIR = Path("/home/cvanuden/chexpert/CheXpert-v1.0")
 CHEXPERT_ORIGINAL_TRAIN_CSV = CHEXPERT_DATA_DIR / "train.csv"
 CHEXPERT_TRAIN_CSV = CHEXPERT_DATA_DIR / "train_split.csv"  # train split from train.csv
 CHEXPERT_VALID_CSV = CHEXPERT_DATA_DIR / "valid_split.csv"  # valid split from train.csv
-CHEXPERT_TEST_CSV = (
-    CHEXPERT_DATA_DIR / "valid.csv"
-)  # using validation set as test set (test set label hidden)
+# CHEXPERT_TEST_CSV = (
+#     CHEXPERT_DATA_DIR / "valid.csv"
+# )  # using validation set as test set (test set label hidden)
 CHEXPERT_MASTER_CSV = (
     CHEXPERT_DATA_DIR / "master_updated.csv"
-)  # contains patient information, not PHI conplient
+)  # contains patient information, not PHI compliant
 CHEXPERT_TRAIN_DIR = CHEXPERT_DATA_DIR / "train"
 CHEXPERT_TEST_DIR = CHEXPERT_DATA_DIR / "valid"
-CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_8x200.csv"
+# CHEXPERT_5x200 = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
+CHEXPERT_TEST_CSV = CHEXPERT_DATA_DIR / "chexpert_5x200.csv"
 
 CHEXPERT_VALID_NUM = 5000
 CHEXPERT_VIEW_COL = "Frontal/Lateral"
@@ -37,6 +38,7 @@ CHEXPERT_TASKS = [
     "Fracture",
     "Support Devices",
 ]
+
 CHEXPERT_COMPETITION_TASKS = [
     "Atelectasis",
     "Cardiomegaly",
@@ -45,14 +47,78 @@ CHEXPERT_COMPETITION_TASKS = [
     "Pleural Effusion",
 ]
 
-# baseed on original chexpert paper
+# based on original chexpert paper
+# CHEXPERT_UNCERTAIN_MAPPINGS = {
+#     "Atelectasis": 1,
+#     "Cardiomegaly": 0,
+#     "Consolidation": 0,
+#     "Edema": 1,
+#     "Pleural Effusion": 1,
+# }
+
+# same as above for the chexpert competition tasks
+# map uncertains to positive for all other tasks
 CHEXPERT_UNCERTAIN_MAPPINGS = {
     "Atelectasis": 1,
+    "Enlarged Cardiomediastinum": 1,
     "Cardiomegaly": 0,
     "Consolidation": 0,
     "Edema": 1,
+    "Fracture": 1,
+    "Lung Lesion": 1,
+    "Lung Opacity": 1,
+    "No Finding": 1,
+    "Pneumonia": 1,
+    "Pneumothorax": 1,
     "Pleural Effusion": 1,
+    "Pleural Other": 1,
+    "Support Devices": 1,
 }
+
+# Intermountain Pneumonia
+INTERMOUNTAIN_DATA_DIR = Path("/data4/intermountain/chexed_v2/data")
+INTERMOUNTAIN_MASTER_CSV = INTERMOUNTAIN_DATA_DIR / "intermountain.csv"  # contains patient information, not PHI compliant
+INTERMOUNTAIN_TRAIN_VAL_CSV = INTERMOUNTAIN_DATA_DIR / "intermountain_train_val.csv"
+INTERMOUNTAIN_TEST_CSV = INTERMOUNTAIN_DATA_DIR / "intermountain_test.csv"
+
+INTERMOUNTAIN_VIEW_COL = "Frontal/Lateral"
+INTERMOUNTAIN_PATH_COL = "Path"
+INTERMOUNTAIN_SPLIT_COL = "Split"
+INTERMOUNTAIN_REPORT_COL = "Report Impression"
+
+INTERMOUNTAIN_TASKS = [
+    "Pneumonia",
+    "Pneumonia+Effusion",
+    "Pneumonia+NumLobes",
+]
+
+INTERMOUNTAIN_UNCERTAIN_MAPPINGS = {
+    "Pneumonia": 1,
+    "Pneumonia+Effusion": 1,
+    "Pneumonia+NumLobes": 1,
+}
+
+INTERMOUNTAIN_REPLACE_MAPPINGS = {
+    'Pneumonia+Effusion': {2: 1},
+    'Pneumonia+NumLobes': {1: 0, 2: 1},
+}
+
+# CANDID-PTX
+CANDID_PTX_DATA_DIR = Path("/data4/candid-ptx")
+CANDID_PTX_MASTER_CSV = CANDID_PTX_DATA_DIR / "candid_ptx.csv"
+CANDID_PTX_TRAIN_VAL_CSV = CANDID_PTX_DATA_DIR / "candid_ptx_train_val.csv"
+CANDID_PTX_TEST_CSV = CANDID_PTX_DATA_DIR / "candid_ptx_test.csv"
+
+CANDID_PTX_VIEW_COL = "Frontal/Lateral"
+CANDID_PTX_PATH_COL = "Path"
+CANDID_PTX_SPLIT_COL = "Split"
+CANDID_PTX_REPORT_COL = "Report Impression"
+
+CANDID_PTX_TASKS = [
+    "Pneumothorax",
+    "Rib Fracture",
+    "Chest Tube",
+]
 
 # SIIM Pneumothorax
 PNEUMOTHORAX_DATA_DIR = Path("/data4/siim")
