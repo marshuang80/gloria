@@ -88,7 +88,7 @@ class ClassificationModel(LightningModule):
         prob = prob.detach().cpu().numpy()
 
         macro_auroc_list, macro_auprc_list, macro_f1_list = [], [], []
-        all_y_cls, all_prob_cls, all_pred_cls = [], [], []
+        all_task_label, all_y_cls, all_prob_cls, all_pred_cls = [], [], [], []
         for i in range(y.shape[1]):
             y_cls = y[:, i]
             prob_cls = prob[:, i]
@@ -108,6 +108,7 @@ class ClassificationModel(LightningModule):
                 macro_auprc_list.append(average_precision_score(y_cls, prob_cls))
                 macro_f1_list.append(f1_score(y_cls, pred_cls))
 
+                all_task_label.extend(np.zeros_like(y_cls) + i)
                 all_y_cls.extend(y_cls)
                 all_prob_cls.extend(prob_cls)
                 all_pred_cls.extend(pred_cls)
@@ -143,3 +144,6 @@ class ClassificationModel(LightningModule):
             }
             with open(results_csv, "w") as fp:
                 json.dump(results, fp)
+
+            output_df = pd.DataFrame(list(zip(all_task_label, all_y_cls, all_prob_cls, all_pred_cls)), columns=['task', 'true', 'prob', 'pred'])
+            output_df.to_csv(os.path.join(self.cfg.output_dir, "outputs.csv"), index=False)

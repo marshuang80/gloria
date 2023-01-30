@@ -156,6 +156,10 @@ class ImageClassifier(nn.Module):
 
         self.classifier = nn.Linear(self.feature_dim, cfg.model.vision.num_targets)
 
+        if cfg.model.pretrained_ckpt_path is not None and cfg.model.pretrained_ckpt_path != '':
+            pretrained_ckpt = torch.load(cfg.model.pretrained_ckpt_path)
+            self.load_state_dict(pretrained_ckpt['state_dict'])
+
     def forward(self, x):
         x = self.img_encoder(x)
         pred = self.classifier(x)

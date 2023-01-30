@@ -4,6 +4,7 @@ import gloria
 import datetime
 import os
 import numpy as np
+import yaml
 
 from dateutil import tz
 from omegaconf import OmegaConf
@@ -109,19 +110,26 @@ def main(cfg, args):
         model.lr = new_lr
         print("=" * 80 + f"\nLearning rate updated to {new_lr}\n" + "=" * 80)
 
+    ckpt_paths = os.path.join(cfg.lightning.checkpoint_callback.dirpath, "best_ckpts.yaml")
     if args.train:
         trainer.fit(model, dm)
     if args.test:
-        ckpt_path = (
-            checkpoint_callback.best_model_path if args.train else cfg.model.checkpoint
-        )
+        if args.train:
+            ckpt_path = checkpoint_callback.best_model_path
+            cfg.model.pretrained_ckpt_path = ckpt_path
+            model = gloria.builder.build_lightning_model(cfg, dm)
+        if os.path.exists(ckpt_paths):
+            with open(ckpt_paths, 'r') as file:
+                best_ckpt_dict = yaml.safe_load(file)
+            ckpt_path = list(best_ckpt_dict.keys())[0]
+            cfg.model.pretrained_ckpt_path = ckpt_path
+            model = gloria.builder.build_lightning_model(cfg, dm)
+        else:
+            ckpt_path = cfg.model.checkpoint
         trainer.test(model=model, datamodule=dm)
 
     # save top weights paths to yaml
     if "checkpoint_callback" in cfg.lightning:
-        ckpt_paths = os.path.join(
-            cfg.lightning.checkpoint_callback.dirpath, "best_ckpts.yaml"
-        )
         checkpoint_callback.to_yaml(filepath=ckpt_paths)
 
 
