@@ -28,7 +28,7 @@ lightning:
 
 model: 
     vision:
-        model_name: 'moco_densenet121'
+        model_name: 'moco_chexpert_densenet121'
         freeze_cnn: false
         pretrained: true
         num_targets: 3

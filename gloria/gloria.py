@@ -10,7 +10,7 @@ import torchvision
 from . import builder
 from . import utils
 from . import constants
-from .models.vision_model import PretrainedImageClassifier
+from .models.vision_model import ImageClassifier, PretrainedImageClassifier
 from .models import cnn_backbones
 from typing import Union, List
 
@@ -20,25 +20,25 @@ random.seed(6)
 
 
 _MODELS = {
-    "gloria_resnet50": "./pretrained/chexpert_resnet50.ckpt",
-    "gloria_resnet18": "./pretrained/chexpert_resnet18.ckpt",
-    "gloria_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
-    "moco_densenet121": "./pretrained/moco_chexpert_densenet121.ckpt",
-    "supervised_densenet121": "./pretrained/supervised_chexpert_densenet121.ckpt",
+    "gloria_chexpert_resnet50": "./pretrained/chexpert_resnet50.ckpt",
+    "gloria_chexpert_resnet18": "./pretrained/chexpert_resnet18.ckpt",
+    "gloria_chexpert_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
+    "moco_chexpert_densenet121": "./pretrained/moco_chexpert_densenet121.ckpt",
+    "supervised_chexpert_densenet121": "./pretrained/supervised_chexpert_densenet121.ckpt",
     "gloria_intermountain_spt_densenet121": "./pretrained/gloria_intermountain_spt_densenet121.ckpt",
     "moco_intermountain_spt_densenet121": "./pretrained/moco_intermountain_spt_densenet121.ckpt",
     "gloria_intermountain_dapt_densenet121": "./pretrained/gloria_intermountain_dapt_densenet121.ckpt",
     "moco_intermountain_dapt_densenet121": "./pretrained/moco_intermountain_dapt_densenet121.ckpt",
     "gloria_candid_ptx_spt_densenet121": "./pretrained/gloria_candid_ptx_spt_densenet121.ckpt",
     "gloria_candid_ptx_dapt_densenet121": "./pretrained/gloria_candid_ptx_dapt_densenet121.ckpt",
-    "resnet18": cnn_backbones.resnet_18,
-    "resnet34": cnn_backbones.resnet_34,
-    "resnet50": cnn_backbones.resnet_50,
-    "densenet121": cnn_backbones.densenet_121,
-    "densenet161": cnn_backbones.densenet_161,
-    "densenet169": cnn_backbones.densenet_169,
-    "resnext50": cnn_backbones.resnext_50,
-    "resnext100": cnn_backbones.resnext_100,
+    # "resnet18": cnn_backbones.resnet_18,
+    # "resnet34": cnn_backbones.resnet_34,
+    # "resnet50": cnn_backbones.resnet_50,
+    # "densenet121": cnn_backbones.densenet_121,
+    # "densenet161": cnn_backbones.densenet_161,
+    # "densenet169": cnn_backbones.densenet_169,
+    # "resnext50": cnn_backbones.resnext_50,
+    # "resnext100": cnn_backbones.resnext_100,
 }
 
 
@@ -150,7 +150,7 @@ def load_img_classification_model(
     # if name doesn't start with gloria, 
     # load a dummy gloria model and overload the params with the pretrained model's state dict
     else:
-        gloria_name = f'gloria_{backbone_name}'
+        gloria_name = f'gloria_chexpert_{backbone_name}'
         gloria_model = load_gloria(gloria_name, device)
         image_encoder = copy.deepcopy(gloria_model.img_encoder)
         del gloria_model
@@ -162,7 +162,7 @@ def load_img_classification_model(
         if name.startswith('supervised'):
             state_dict = torch.load(_MODELS[name])['model_state']
             for k in list(state_dict.keys()):
-                # retain only encoder_q up to before the embedding layer
+                # retain only up to before the linear layer
                 if k.startswith('module.model') and not k.startswith('module.model.classifier'):
                     # remove prefix
                     state_dict[k[len("module.model."):]] = state_dict[k]

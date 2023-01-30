@@ -28,7 +28,7 @@ lightning:
 
 model: 
     vision:
-        model_name: 'densenet121'
+        model_name: 'densenet_121'
         freeze_cnn: false
         pretrained: true
         num_targets: 5
