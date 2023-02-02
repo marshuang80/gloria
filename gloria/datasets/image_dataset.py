@@ -107,11 +107,10 @@ class CheXpertImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
-        if cfg.model.vision.remove_task is None or cfg.model.vision.remove_task == '':
-            remove_task = []
+        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
+            self.tasks = CHEXPERT_TASKS
         else:
-            remove_task = cfg.model.vision.remove_task.split(',')
-        self.tasks = [task for task in CHEXPERT_TASKS if task not in remove_task]
+            self.tasks = cfg.model.vision.remove_task.split(',')
 
         print(f'Tasks: {self.tasks}')
 
@@ -176,6 +175,12 @@ class IntermountainImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
+        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
+            self.tasks = INTERMOUNTAIN_TASKS
+        else:
+            self.tasks = cfg.model.vision.remove_task.split(',')
+
+        print(f'Tasks: {self.tasks}')
 
         # read in csv file
         self.df = pd.read_csv(INTERMOUNTAIN_MASTER_CSV)
@@ -206,7 +211,7 @@ class IntermountainImageDataset(ImageBaseDataset):
             print(f"After: {self.df.shape[0]}")
 
         print(f'{split}: {self.df.shape[0]}')
-        for task in INTERMOUNTAIN_TASKS:
+        for task in self.tasks:
             print(task, np.sum(self.df[task]), np.unique(self.df[task]))
 
         super(IntermountainImageDataset, self).__init__(cfg, split, transform)
@@ -220,7 +225,7 @@ class IntermountainImageDataset(ImageBaseDataset):
         x = self.read_from_jpg(img_path)
 
         # get labels
-        y = list(row[INTERMOUNTAIN_TASKS])
+        y = list(row[self.tasks])
         y = torch.tensor(y)
 
         return x, y
@@ -237,6 +242,12 @@ class CandidPtxImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
+        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
+            self.tasks = CANDID_PTX_TASKS
+        else:
+            self.tasks = cfg.model.vision.remove_task.split(',')
+
+        print(f'Tasks: {self.tasks}')
 
         # read in csv file
         self.df = pd.read_csv(CANDID_PTX_MASTER_CSV)
@@ -245,7 +256,7 @@ class CandidPtxImageDataset(ImageBaseDataset):
         self.df = self.df.fillna(0)
 
         # convert labels to float
-        for task in CANDID_PTX_TASKS:
+        for task in self.tasks:
             self.df[task] = self.df[task].astype(float)
 
         self.df = self.df[self.df[CANDID_PTX_SPLIT_COL] == split].reset_index(drop=True)
@@ -258,14 +269,14 @@ class CandidPtxImageDataset(ImageBaseDataset):
 
             if cfg.data.frac == 0.01:
                 add_positives = []
-                for task in CANDID_PTX_TASKS:
+                for task in self.tasks:
                     add_positives.append(self.df[self.df[task] == 1].sample(n=1))
                 self.df = pd.concat([self.df]+add_positives)
                 
             print(f"Before: {self.df.shape[0]}")
 
         print(f'{split}: {self.df.shape[0]}')
-        for task in CANDID_PTX_TASKS:
+        for task in self.tasks:
             print(task, np.sum(self.df[task]), np.unique(self.df[task]))
 
         super(CandidPtxImageDataset, self).__init__(cfg, split, transform)
@@ -279,7 +290,7 @@ class CandidPtxImageDataset(ImageBaseDataset):
         x = self.read_from_jpg(img_path)
 
         # get labels
-        y = list(row[CANDID_PTX_TASKS])
+        y = list(row[self.tasks])
         y = torch.tensor(y)
 
         return x, y

@@ -131,3 +131,5 @@ dmypy.json
 # repo-specific
 data/
 pretrained/
+configs/
+run/

@@ -25,6 +25,11 @@ _MODELS = {
     "gloria_chexpert_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
     "moco_chexpert_densenet121": "./pretrained/moco_chexpert_densenet121.ckpt",
     "supervised_chexpert_densenet121": "./pretrained/supervised_chexpert_densenet121.ckpt",
+    "supervised_chexpert_loto_pneumonia_effusion_densenet121": "./pretrained/supervised_chexpert_loto_pneumonia_effusion_densenet121.ckpt",
+    "supervised_chexpert_loto_pneumonia_densenet121": "./pretrained/supervised_chexpert_loto_pneumonia_densenet121.ckpt",
+    "supervised_chexpert_loto_pneumothorax_densenet121": "./pretrained/supervised_chexpert_loto_pneumothorax_densenet121.ckpt",
+    "supervised_chexpert_loto_fracture_densenet121": "./pretrained/supervised_chexpert_loto_fracture_densenet121.ckpt",
+    "supervised_chexpert_loto_support_devices_densenet121": "./pretrained/supervised_chexpert_loto_support_devices_densenet121.ckpt",
     "gloria_intermountain_spt_densenet121": "./pretrained/gloria_intermountain_spt_densenet121.ckpt",
     "moco_intermountain_spt_densenet121": "./pretrained/moco_intermountain_spt_densenet121.ckpt",
     "gloria_intermountain_dapt_densenet121": "./pretrained/gloria_intermountain_dapt_densenet121.ckpt",
@@ -34,7 +39,7 @@ _MODELS = {
     # "resnet18": cnn_backbones.resnet_18,
     # "resnet34": cnn_backbones.resnet_34,
     # "resnet50": cnn_backbones.resnet_50,
-    # "densenet121": cnn_backbones.densenet_121,
+    "densenet121": cnn_backbones.densenet_121,
     # "densenet161": cnn_backbones.densenet_161,
     # "densenet169": cnn_backbones.densenet_169,
     # "resnext50": cnn_backbones.resnext_50,
@@ -160,14 +165,26 @@ def load_img_classification_model(
         del image_model
 
         if name.startswith('supervised'):
-            state_dict = torch.load(_MODELS[name])['model_state']
-            for k in list(state_dict.keys()):
-                # retain only up to before the linear layer
-                if k.startswith('module.model') and not k.startswith('module.model.classifier'):
-                    # remove prefix
-                    state_dict[k[len("module.model."):]] = state_dict[k]
-                # delete renamed or unused k
-                del state_dict[k]
+            ckpt = torch.load(_MODELS[name])
+            if 'loto' in name:
+                state_dict = ckpt['state_dict']
+                for k in list(state_dict.keys()):
+                    # retain only up to before the linear layer
+                    if k.startswith('model.img_encoder.') and not k.startswith('model.classifier.'):
+                        # remove prefix
+                        state_dict[k[len("model.img_encoder."):]] = state_dict[k]
+                    # delete renamed or unused k
+                    del state_dict[k]
+            else:
+                state_dict = ckpt['model_state']
+
+                for k in list(state_dict.keys()):
+                    # retain only up to before the linear layer
+                    if k.startswith('module.model') and not k.startswith('module.model.classifier'):
+                        # remove prefix
+                        state_dict[k[len("module.model."):]] = state_dict[k]
+                    # delete renamed or unused k
+                    del state_dict[k]
             image_encoder.model.load_state_dict(state_dict)
 
         elif name.startswith('moco'):
