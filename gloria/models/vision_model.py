@@ -5,6 +5,9 @@ import torch.nn.functional as F
 
 from . import cnn_backbones
 
+MODEL_NAMES = {
+    'densenet121': 'densenet_121'
+}
 
 class ImageEncoder(nn.Module):
     def __init__(self, cfg):
@@ -135,6 +138,7 @@ class PretrainedImageClassifier(nn.Module):
         super(PretrainedImageClassifier, self).__init__()
         self.img_encoder = image_encoder
         self.classifier = nn.Linear(feature_dim, num_cls)
+
         if freeze_encoder:
             for param in self.img_encoder.parameters():
                 param.requires_grad = False
@@ -144,21 +148,16 @@ class PretrainedImageClassifier(nn.Module):
         pred = self.classifier(x)
         return pred
 
-
 class ImageClassifier(nn.Module):
     def __init__(self, cfg, image_encoder=None):
         super(ImageClassifier, self).__init__()
 
-        model_function = getattr(cnn_backbones, cfg.model.vision.model_name)
+        model_function = getattr(cnn_backbones, MODEL_NAMES[cfg.model.vision.model_name.split('_')[-1]])
         self.img_encoder, self.feature_dim, _ = model_function(
             pretrained=cfg.model.vision.pretrained
         )
 
         self.classifier = nn.Linear(self.feature_dim, cfg.model.vision.num_targets)
-
-        if cfg.model.pretrained_ckpt_path is not None and cfg.model.pretrained_ckpt_path != '':
-            pretrained_ckpt = torch.load(cfg.model.pretrained_ckpt_path)
-            self.load_state_dict(pretrained_ckpt['state_dict'])
 
     def forward(self, x):
         x = self.img_encoder(x)

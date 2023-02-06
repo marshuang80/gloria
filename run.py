@@ -114,22 +114,26 @@ def main(cfg, args):
     if args.train:
         trainer.fit(model, dm)
     if args.test:
-        if args.train:
-            ckpt_path = checkpoint_callback.best_model_path
-            cfg.model.pretrained_ckpt_path = ckpt_path
-            model = gloria.builder.build_lightning_model(cfg, dm)
-        if os.path.exists(ckpt_paths):
-            with open(ckpt_paths, 'r') as file:
-                best_ckpt_dict = yaml.safe_load(file)
-            ckpt_path = list(best_ckpt_dict.keys())[0]
-            cfg.model.pretrained_ckpt_path = ckpt_path
-            model = gloria.builder.build_lightning_model(cfg, dm)
-        else:
-            ckpt_path = cfg.model.checkpoint
+        # if args.train:
+        #     ckpt_path = checkpoint_callback.best_model_path
+        #     cfg.model.pretrained_ckpt_path = ckpt_path
+        #     model = gloria.builder.build_lightning_model(cfg, dm)
+        # if os.path.exists(ckpt_paths):
+        #     with open(ckpt_paths, 'r') as file:
+        #         best_ckpt_dict = yaml.safe_load(file)
+        #     ckpt_path = list(best_ckpt_dict.keys())[0]
+        #     print(ckpt_path)
+        #     cfg.model.pretrained_ckpt_path = ckpt_path
+        #     model = gloria.builder.build_lightning_model(cfg, dm)
+        # else:
+        #     ckpt_path = cfg.model.checkpoint
+        ckpt_path = (
+            checkpoint_callback.best_model_path if args.train else cfg.model.checkpoint
+        )
         trainer.test(model=model, datamodule=dm)
 
     # save top weights paths to yaml
-    if "checkpoint_callback" in cfg.lightning:
+    if "checkpoint_callback" in cfg.lightning and not os.path.exists(ckpt_paths):
         checkpoint_callback.to_yaml(filepath=ckpt_paths)
 
 

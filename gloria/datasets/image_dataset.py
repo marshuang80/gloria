@@ -107,10 +107,10 @@ class CheXpertImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
-        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
-            self.tasks = CHEXPERT_TASKS
-        else:
-            self.tasks = cfg.model.vision.remove_task.split(',')
+        self.tasks = CHEXPERT_TASKS
+        if cfg.model.vision.remove_task is not None and len(cfg.model.vision.remove_task) > 0:
+            remove_tasks = cfg.model.vision.remove_task.split(',')
+            self.tasks = [task for task in self.tasks if task not in remove_tasks]
 
         print(f'Tasks: {self.tasks}')
 
@@ -175,10 +175,10 @@ class IntermountainImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
-        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
-            self.tasks = INTERMOUNTAIN_TASKS
-        else:
-            self.tasks = cfg.model.vision.remove_task.split(',')
+        self.tasks = INTERMOUNTAIN_TASKS
+        if cfg.model.vision.remove_task is not None and len(cfg.model.vision.remove_task) > 0:
+            remove_tasks = cfg.model.vision.remove_task.split(',')
+            self.tasks = [task for task in self.tasks if task not in remove_tasks]
 
         print(f'Tasks: {self.tasks}')
 
@@ -242,10 +242,10 @@ class CandidPtxImageDataset(ImageBaseDataset):
             )
 
         self.cfg = cfg
-        if cfg.model.vision.tasks is None or cfg.model.vision.tasks == '':
-            self.tasks = CANDID_PTX_TASKS
-        else:
-            self.tasks = cfg.model.vision.remove_task.split(',')
+        self.tasks = CANDID_PTX_TASKS
+        if cfg.model.vision.remove_task is not None and len(cfg.model.vision.remove_task) > 0:
+            remove_tasks = cfg.model.vision.remove_task.split(',')
+            self.tasks = [task for task in self.tasks if task not in remove_tasks]
 
         print(f'Tasks: {self.tasks}')
 

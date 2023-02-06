@@ -5,6 +5,7 @@ import copy
 import random
 import pandas as pd
 import segmentation_models_pytorch as smp
+from torch import nn
 import torchvision
 
 from . import builder
@@ -22,7 +23,8 @@ random.seed(6)
 _MODELS = {
     "gloria_chexpert_resnet50": "./pretrained/chexpert_resnet50.ckpt",
     "gloria_chexpert_resnet18": "./pretrained/chexpert_resnet18.ckpt",
-    "gloria_chexpert_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
+    # "gloria_chexpert_densenet121": "./pretrained/gloria_chexpert_densenet121.ckpt",
+    "gloria_chexpert_densenet121": "./pretrained/chexpert_densenet121.ckpt",
     "moco_chexpert_densenet121": "./pretrained/moco_chexpert_densenet121.ckpt",
     "supervised_chexpert_densenet121": "./pretrained/supervised_chexpert_densenet121.ckpt",
     "supervised_chexpert_loto_pneumonia_effusion_densenet121": "./pretrained/supervised_chexpert_loto_pneumonia_effusion_densenet121.ckpt",
@@ -94,6 +96,7 @@ def load_gloria(
             f"Model {name} not found; available models = {available_models()}"
         )
 
+    print(f'Loading from checkpoint {ckpt_path}')
     if not os.path.exists(ckpt_path):
         raise RuntimeError(
             f"Model {name} not found.\n"
@@ -123,7 +126,8 @@ def load_img_classification_model(
     device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu",
     num_cls: int = 1,
     freeze_encoder: bool = True,
-    pretrained: bool = True
+    pretrained: bool = True,
+    cfg = None
 ):
     """Load a GLoRIA pretrained classification model
 
@@ -145,6 +149,63 @@ def load_img_classification_model(
     """
 
     backbone_name = name.split('_')[-1]
+    feature_dim = _FEATURE_DIM[backbone_name]
+
+    print(f'In load_img_classification_model! name: {name}, backbone_name: {backbone_name}, pretrained: {pretrained}, freeze_encoder: {freeze_encoder}')
+
+    if cfg is not None and cfg.model.pretrained_ckpt_path:
+        print(f'Loading from checkpoint {cfg.model.pretrained_ckpt_path}')
+        img_model = ImageClassifier(cfg)
+
+        pretrained_ckpt = torch.load(cfg.model.pretrained_ckpt_path)
+        state_dict = pretrained_ckpt['state_dict']
+        for k in list(state_dict.keys()):
+            if k.startswith('model.') and not '_embedder' in k:
+                # remove prefix
+                renamed_k = k.replace('model.', '')
+                state_dict[renamed_k] = state_dict[k]
+            # delete renamed or unused k
+            del state_dict[k]
+
+        img_model.load_state_dict(state_dict)
+
+        # # load image classifier
+        # print(f'Loading from pretrained checkpoint path: {cfg.model.pretrained_ckpt_path}')
+        # ckpt = torch.load(cfg.model.pretrained_ckpt_path)
+
+        # state_dict = ckpt['state_dict']
+        # img_encoder_state_dict = {}
+        # classifier_state_dict = {}
+        # for k in list(state_dict.keys()):
+        #     # retain only up to before the linear layer
+        #     if k.startswith('model.img_encoder.model.'):
+        #         # remove prefix
+        #         img_encoder_state_dict[k[len("model.img_encoder.model."):]] = state_dict[k]
+        #     elif k.startswith('model.classifier.'):
+        #         # remove prefix
+        #         classifier_state_dict[k[len("model.classifier."):]] = state_dict[k]
+        #     # delete renamed or unused k
+        #     del state_dict[k]
+
+        # gloria_name = f'gloria_chexpert_{backbone_name}'
+        # gloria_model = load_gloria(gloria_name, device)
+        # image_encoder = copy.deepcopy(gloria_model.img_encoder)
+        # del gloria_model
+
+        # image_model, _, _ = _MODELS[backbone_name](pretrained=pretrained)
+        # image_encoder.model = copy.deepcopy(image_model)
+        # del image_model
+
+        # image_encoder.model.load_state_dict(img_encoder_state_dict)
+        # classifier = nn.Linear(feature_dim, num_cls)
+        # classifier.load_state_dict(classifier_state_dict)
+
+        # # create image classifier
+        # img_model = PretrainedImageClassifier(
+        #     image_encoder=image_encoder, classifier=classifier, num_cls=num_cls, feature_dim=feature_dim, freeze_encoder=freeze_encoder
+        # )
+
+        # return img_model
 
     # load gloria pretrained image encoder
     if name.startswith('gloria'):
@@ -185,6 +246,8 @@ def load_img_classification_model(
                         state_dict[k[len("module.model."):]] = state_dict[k]
                     # delete renamed or unused k
                     del state_dict[k]
+
+            print(f'{name}: {len(list(state_dict.keys()))}')
             image_encoder.model.load_state_dict(state_dict)
 
         elif name.startswith('moco'):
@@ -199,9 +262,8 @@ def load_img_classification_model(
             image_encoder.model.load_state_dict(state_dict)
 
     # create image classifier
-    feature_dim = _FEATURE_DIM[backbone_name]
     img_model = PretrainedImageClassifier(
-        image_encoder, num_cls, feature_dim, freeze_encoder
+        image_encoder=image_encoder, num_cls=num_cls, feature_dim=feature_dim, freeze_encoder=freeze_encoder
     )
 
     return img_model

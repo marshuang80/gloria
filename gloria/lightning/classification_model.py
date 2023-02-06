@@ -28,6 +28,7 @@ class ClassificationModel(LightningModule):
                 num_cls=self.cfg.model.vision.num_targets,
                 freeze_encoder=self.cfg.model.vision.freeze_cnn,
                 pretrained=self.cfg.model.vision.pretrained,
+                cfg = self.cfg,
             )
         else:
             self.model = builder.build_img_model(cfg)
@@ -143,6 +144,7 @@ class ClassificationModel(LightningModule):
                 "micro_auprc": micro_auprc,
                 "micro_f1": micro_f1,
             }
+
             with open(results_csv, "w") as fp:
                 json.dump(results, fp)
 
